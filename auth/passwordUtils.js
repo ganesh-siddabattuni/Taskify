@@ -15,6 +15,8 @@ const passwordUtils = function () {
     };
   };
 
+
+  
   pwUtils.validatePassword = function (password, hash, salt) {
     var hashVerify = crypto
       .pbkdf2Sync(password, salt, 10000, 64, "sha512")

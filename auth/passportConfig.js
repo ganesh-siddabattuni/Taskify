@@ -19,6 +19,8 @@ const verifyCallback = async (username, password, done) => {
     user.salt
   );
 
+  
+
   if (isValid) {
     return done(null, user);
   } else {
