@@ -1,6 +1,5 @@
-import NavbarWSearch from "../Navbar/NavbarWSearch";
-import ProjectCard from "./ProjectCard";
-import { Link } from "react-router-dom";
+// Dashboard.js
+
 import { useEffect, useRef, useState } from "react";
 import { Redirect } from "react-router-dom";
 import Loader from "react-loader-spinner";
@@ -9,10 +8,13 @@ import { makeStyles } from "@material-ui/core/styles";
 import Typography from "@material-ui/core/Typography";
 import { toast } from "react-toastify";
 import Footer from "../Footer/Footer.js";
-import "./Dashboard.css";
+import NavbarWSearch from "../Navbar/NavbarWSearch";
+import ProjectCard from "./ProjectCard";
+import { Link } from "react-router-dom";
 import PropTypes from "prop-types";
+import "./Dashboard.css";
 
-//intialize the material ui styles with their hook
+// Initialize the material UI styles with their hook
 const useStyles = makeStyles((theme) => ({
   root: {
     "& > * + *": {
@@ -33,7 +35,7 @@ function Dashboard(props) {
   const [sideBarProjects, setSideBarProjects] = useState([]);
   const [databaseQueried, setDataQueried] = useState(false);
 
-  // pagination handling
+  // Pagination handling
   const classes = useStyles();
   const [page, setPage] = useState(1);
   const handlePaginationChange = (event, value) => {
@@ -42,7 +44,7 @@ function Dashboard(props) {
     setPage(value);
   };
 
-  //use effect for getting the current user and confirming they are logged in.
+  // Use effect for getting the current user and confirming they are logged in
   useEffect(() => {
     async function fetchData() {
       const result = await fetch("/auth/isLoggedIn", { method: "GET" });
@@ -56,7 +58,7 @@ function Dashboard(props) {
     fetchData();
   }, []);
 
-  // function for handling the submission of a new project
+  // Function for handling the submission of a new project
   const newProjectSubmit = async (event) => {
     event.preventDefault();
     var formData = new FormData(newProjectForm.current);
@@ -73,7 +75,7 @@ function Dashboard(props) {
         ownerId: loggedInUser._id,
       }),
     });
-    if (result) {
+    if (result.ok) {
       closeModalButton.current.click();
       toast.dark("Successfully added a new project!");
       const dataResult = await fetch(
@@ -89,26 +91,33 @@ function Dashboard(props) {
     }
   };
 
-  // this use effects will generate the project count to know how many pages the dashboard should have
+  // This use effect will generate the project count to know how many pages the dashboard should have
   useEffect(() => {
-    // get the user's project count to implement pagination
     async function fetchProjectCount() {
       if (loggedInUser && loggedInUser._id) {
-        const projectCountResult = await fetch(
-          `/projects/${loggedInUser._id}/count`,
-          {
-            method: "GET",
+        try {
+          const projectCountResult = await fetch(
+            `/projects/${loggedInUser._id}/count`,
+            {
+              method: "GET",
+            }
+          );
+          if (!projectCountResult.ok) {
+            throw new Error("Network response was not ok.");
           }
-        );
-        const parsedProjectsData = await projectCountResult.json();
-        setProjectCount(parsedProjectsData.count);
-        setIsDataLoading(false);
+          const parsedProjectsData = await projectCountResult.json();
+          setProjectCount(parsedProjectsData.count);
+          setIsDataLoading(false);
+        } catch (error) {
+          console.error("Error fetching project count:", error);
+          toast.error("Error fetching project count.");
+        }
       }
     }
     fetchProjectCount();
   }, [loggedInUser]);
 
-  // use effect that pulls projects based on the page that is selected
+  // Use effect that pulls projects based on the page that is selected
   useEffect(() => {
     async function fetchProjectData() {
       if (loggedInUser && loggedInUser._id) {
@@ -127,11 +136,10 @@ function Dashboard(props) {
     fetchProjectData();
   }, [loggedInUser, page]);
 
-  // use effect that pulls the 5 most recently created projects for the user if they exist
+  // Use effect that pulls the 5 most recently created projects for the user if they exist
   useEffect(() => {
     async function getRecentProjects() {
       if (loggedInUser && loggedInUser._id) {
-        // we are reusing the profile projects card because it also generates the most recent 5 projects.
         const rawData = await fetch(`/projects/${loggedInUser._id}/profile`);
         const parsedRecentProjects = await rawData.json();
         setSideBarProjects(parsedRecentProjects);
@@ -140,14 +148,14 @@ function Dashboard(props) {
     getRecentProjects();
   }, [loggedInUser]);
 
-  // this handles the logoutbutton pressing and we call the props.logoutpressed too to let the main App component know the state has changed.
+  // This handles the logout button pressing and we call the props.logoutpressed too to let the main App component know the state has changed
   const logoutPressed = () => {
     setLoggedIn(false);
     setLoggedInUser(null);
     props.logoutPressed();
   };
 
-  // if the user is logged in and we have access to the user object, we will render the normal dashboard view, if not, we will redirect them.
+  // If the user is logged in and we have access to the user object, we will render the normal dashboard view, if not, we will redirect them
   if (isLoggedIn && loggedInUser) {
     return (
       <div>
@@ -238,26 +246,24 @@ function Dashboard(props) {
                 </h6>
                 <ul className="nav flex-column mb-2">
                   {!isDataLoading &&
-                    sideBarProjects.map((project) => {
-                      return (
-                        <li key={project._id}>
-                          <Link
-                            key={project._id}
-                            className="projectLink nav-link"
-                            to={"/projects/" + project._id}
-                          >
-                            {project.projectName}
-                          </Link>
-                        </li>
-                      );
-                    })}
+                    sideBarProjects.map((project) => (
+                      <li key={project._id}>
+                        <Link
+                          key={project._id}
+                          className="projectLink nav-link"
+                          to={"/projects/" + project._id}
+                        >
+                          {project.projectName}
+                        </Link>
+                      </li>
+                    ))}
                 </ul>
                 {!isDataLoading && userProjects.length === 0 && (
                   <div className="container">No Projects Yet!</div>
                 )}
               </div>
             </nav>
-            {/* start of new project modal setup */}
+            {/* Start of new project modal setup */}
             <div
               className="modal fade"
               id="newProjectModal"
@@ -345,29 +351,25 @@ function Dashboard(props) {
                     />
                   </div>
                 )}
-                {userProjects.map((project) => {
-                  return (
-                    <Link
+                {userProjects.map((project) => (
+                  <Link
+                    key={project._id}
+                    className="projectLink"
+                    to={"/projects/" + project._id}
+                  >
+                    <ProjectCard
                       key={project._id}
-                      className="projectLink"
-                      to={"/projects/" + project._id}
-                    >
-                      <ProjectCard
-                        key={project._id}
-                        name={project.projectName}
-                        description={project.projectDescription}
-                      />
-                    </Link>
-                  );
-                })}
+                      name={project.projectName}
+                      description={project.projectDescription}
+                    />
+                  </Link>
+                ))}
 
-                {!isDataLoading &&
-                  databaseQueried &&
-                  userProjects.length === 0 && (
-                    <div>
-                      <h3>No Projects Yet!</h3>
-                    </div>
-                  )}
+                {!isDataLoading && databaseQueried && userProjects.length === 0 && (
+                  <div>
+                    <h3>No Projects Yet!</h3>
+                  </div>
+                )}
               </div>
               <div className="d-flex justify-content-center mt-3">
                 <div className={classes.root}>

@@ -7,23 +7,27 @@ function Footer() {
         <div className="row align-items-center">
           <div className="col-lg-6 col-md-12 mb-4 mb-md-0">
             <p className="text-uppercase colorDesign footer-p">OpTask</p>
-            <p> Built by Nabil Arbouz and Anna Daccache (2021)</p>
+            <p> Built by Shwet Khatri</p>
           </div>
-          <div className="col-lg3 col-md-6 mb-4 mb-md-0">
+          <div className="col-lg-3 col-md-6 mb-4 mb-md-0">
             <p className="text-uppercase colorDesign footer-p">Links</p>
             <ul className="list-unstyled mb-0">
               <li>
                 <a
-                  href="https://johnguerra.co/classes/webDevelopment_spring_2021/"
+                  href="https://www.linkedin.com/in/shwet-khatri-4ab216196/"
                   className="text-dark"
+                  target="_blank"
+                  rel="noreferrer"
                 >
-                  Course Website
+                  Linkedin
                 </a>
               </li>
               <li>
                 <a
-                  href="https://github.com/amdacccache/novelish.io"
+                  href="https://github.com/ShwetKhatri2001"
                   className="text-dark"
+                  target="_blank"
+                  rel="noreferrer"
                 >
                   Github
                 </a>

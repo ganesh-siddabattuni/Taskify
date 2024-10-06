@@ -3,11 +3,10 @@ const { MongoClient, ObjectId } = require("mongodb");
 
 function OpTaskDB() {
   const opDB = {};
-
-  const url = process.env.DB_STRING;
+  const url = process.env.MONGO_URL; // Make sure this is set in your .env file
   const DB_NAME = "OpTask";
 
-  // save a new user to the DB
+  // Save a new user to the DB
   opDB.saveNewUser = async function (newUser) {
     let client;
     try {
@@ -23,7 +22,7 @@ function OpTaskDB() {
     }
   };
 
-  // try to find a user given a username
+  // Find a user given a username
   opDB.getUserByEmail = async function (query) {
     let client;
     try {
@@ -33,9 +32,7 @@ function OpTaskDB() {
       console.log("Connecting to OpTask DB...");
       const db = client.db(DB_NAME);
       const usersCollections = db.collection("users");
-      const results = await usersCollections.findOne({
-        username: query,
-      });
+      const results = await usersCollections.findOne({ username: query });
       console.log("Got user");
       return results;
     } finally {
@@ -43,7 +40,7 @@ function OpTaskDB() {
     }
   };
 
-  // this function gets a user object by Id
+  // Get a user object by Id
   opDB.getUserById = async function (query) {
     let client;
     try {
@@ -53,9 +50,7 @@ function OpTaskDB() {
       console.log("Connecting to OpTask DB...");
       const db = client.db(DB_NAME);
       const usersCollection = db.collection("users");
-      const results = await usersCollection.findOne({
-        _id: new ObjectId(query),
-      });
+      const results = await usersCollection.findOne({ _id: new ObjectId(query) });
       console.log("got user by id");
       return results;
     } finally {
@@ -63,368 +58,228 @@ function OpTaskDB() {
     }
   };
 
-  // this function gets projects for a user
-  opDB.getUserProjects = async function (userId) {
+  // Get paginated projects
+  opDB.getPageProjects = async function(userId, pageNumber) {
     let client;
     try {
-      console.log("Getting projects...");
       client = new MongoClient(url, { useUnifiedTopology: true });
       await client.connect();
-      console.log("Connecting to OpTask DB...");
       const db = client.db(DB_NAME);
       const projectsCollection = db.collection("projects");
-      const results = await projectsCollection
-        .find({ ownerId: userId })
+
+      const pageSize = 10; // Adjust page size as needed
+      const skip = (parseInt(pageNumber) - 1) * pageSize;
+
+      const projects = await projectsCollection.find({ ownerId: new ObjectId(userId) })
+        .skip(skip)
+        .limit(pageSize)
         .toArray();
-      console.log("got user's projects");
-      return results;
+
+      return projects;
     } finally {
       client.close();
     }
   };
 
-  //this call returns the number of projects a user has
-  opDB.getUserProjectCount = async function (userId) {
+  // Get profile projects (most recent 5)
+  opDB.getProfileProjects = async function(userId) {
     let client;
     try {
-      console.log("Getting number of projects...");
       client = new MongoClient(url, { useUnifiedTopology: true });
       await client.connect();
-      console.log("Connecting to OpTask DB...");
       const db = client.db(DB_NAME);
       const projectsCollection = db.collection("projects");
-      const results = await projectsCollection.countDocuments({
-        ownerId: userId,
-      });
-      console.log("got user's project count");
-      return results;
-    } finally {
-      client.close();
-    }
-  };
 
-  opDB.getPageProjects = async function (userId, page) {
-    let client;
-    try {
-      console.log("Getting projects...");
-      client = new MongoClient(url, { useUnifiedTopology: true });
-      await client.connect();
-      console.log("Connecting to OpTask DB...");
-      const db = client.db(DB_NAME);
-      const projectsCollection = db.collection("projects");
-      const results = await projectsCollection
-        .find({ ownerId: userId })
-        .sort({ _id: -1 })
-        .skip(page > 0 ? (page - 1) * 14 : 0)
-        .limit(14)
+      const projects = await projectsCollection.find({ ownerId: new ObjectId(userId) })
+        .sort({ createdAt: -1 }) // Assuming you have a createdAt field
+        .limit(5)
         .toArray();
-      console.log("got the projects for this page(ination)");
-      return results;
+
+      return projects;
     } finally {
       client.close();
     }
   };
 
-  opDB.createProject = async (projectObject) => {
+  // Get project count for a user
+  opDB.getProjectCount = async function(userId) {
     let client;
     try {
-      console.log("Creating project...");
       client = new MongoClient(url, { useUnifiedTopology: true });
       await client.connect();
-      console.log("Connecting to OpTask DB...");
       const db = client.db(DB_NAME);
       const projectsCollection = db.collection("projects");
-      const result = await projectsCollection.insertOne(projectObject);
-      console.log("created project");
+
+      const count = await projectsCollection.countDocuments({ ownerId: new ObjectId(userId) });
+
+      return { count };
+    } finally {
+      client.close();
+    }
+  };
+
+  // Get a specific project
+  opDB.getProject = async function(projectId) {
+    let client;
+    try {
+      client = new MongoClient(url, { useUnifiedTopology: true });
+      await client.connect();
+      const db = client.db(DB_NAME);
+      const projectsCollection = db.collection("projects");
+
+      const project = await projectsCollection.findOne({ _id: new ObjectId(projectId) });
+
+      return project;
+    } finally {
+      client.close();
+    }
+  };
+
+  // Create a new project
+  opDB.createProject = async function(projectData) {
+    let client;
+    try {
+      client = new MongoClient(url, { useUnifiedTopology: true });
+      await client.connect();
+      const db = client.db(DB_NAME);
+      const projectsCollection = db.collection("projects");
+
+      const result = await projectsCollection.insertOne(projectData);
+
       return result;
     } finally {
       client.close();
     }
   };
 
-  opDB.getProject = async (projectId) => {
+  // Create a new task
+  opDB.createTask = async function(taskData) {
     let client;
     try {
-      console.log("Getting project");
       client = new MongoClient(url, { useUnifiedTopology: true });
       await client.connect();
-      console.log("connecting to the db");
-      const db = client.db(DB_NAME);
-      const projectsCollection = db.collection("projects");
-      const result = await projectsCollection.findOne({
-        _id: new ObjectId(projectId),
-      });
-      console.log("got project");
-      return result;
-    } finally {
-      client.close();
-    }
-  };
-
-  opDB.getProfileProjects = async function (userId) {
-    let client;
-    try {
-      console.log("Getting projects...");
-      client = new MongoClient(url, { useUnifiedTopology: true });
-      await client.connect();
-      console.log("Connecting to OpTask DB...");
-      const db = client.db(DB_NAME);
-      const projectsCollection = db.collection("projects");
-      const results = await projectsCollection
-        .find({ ownerId: userId })
-        .sort({ _id: -1 })
-        .limit(6)
-        .toArray();
-      console.log("got user's projects");
-      return results;
-    } finally {
-      client.close();
-    }
-  };
-
-  opDB.updateProject = async (projectId, newName, newDescription) => {
-    let client;
-    try {
-      console.log("Updating project");
-      client = new MongoClient(url, { useUnifiedTopology: true });
-      await client.connect();
-      console.log("connecting to the db");
-      const db = client.db(DB_NAME);
-      const projectsCollection = db.collection("projects");
-      const result = await projectsCollection.findOneAndUpdate(
-        {
-          _id: new ObjectId(projectId),
-        },
-        {
-          $set: {
-            projectName: newName,
-            projectDescription: newDescription,
-          },
-        }
-      );
-      console.log("got project");
-      return result;
-    } finally {
-      client.close();
-    }
-  };
-
-  opDB.deleteProject = async (projectId) => {
-    let client;
-    try {
-      console.log("Deleting project");
-      client = new MongoClient(url, { useUnifiedTopology: true });
-      await client.connect();
-      console.log("connecting to the db");
-      const db = client.db(DB_NAME);
-      const projectsCollection = db.collection("projects");
-      const tasksCollection = db.collection("tasks");
-      const result = await projectsCollection.findOneAndDelete({
-        _id: new ObjectId(projectId),
-      });
-      console.log("deleted project");
-      const result2 = await tasksCollection.deleteMany({
-        projectId: projectId,
-      });
-      return { result, result2 };
-    } finally {
-      client.close();
-    }
-  };
-
-  opDB.searchAndGetProjects = async (query, userId, page) => {
-    let client;
-    try {
-      console.log("Searching and retrieving project");
-      client = new MongoClient(url, { useUnifiedTopology: true });
-      await client.connect();
-      console.log("connecting to the db");
-      const db = client.db(DB_NAME);
-      const projectsCollection = db.collection("projects");
-      const result = await projectsCollection
-        .find({
-          ownerId: userId,
-          $text: {
-            $search: query,
-          },
-        })
-        .skip(page > 0 ? (page - 1) * 10 : 0)
-        .limit(10)
-        .toArray();
-      console.log("searched and got projects");
-      return result;
-    } finally {
-      client.close();
-    }
-  };
-
-  //this call returns the number of projects a user has
-  opDB.getSearchResultCount = async function (query, userId) {
-    let client;
-    try {
-      console.log("Getting number of projects...");
-      client = new MongoClient(url, { useUnifiedTopology: true });
-      await client.connect();
-      console.log("Connecting to OpTask DB...");
-      const db = client.db(DB_NAME);
-      const projectsCollection = db.collection("projects");
-      const results = await projectsCollection.countDocuments({
-        ownerId: userId,
-        $text: {
-          $search: query,
-        },
-      });
-      console.log("got search result count");
-      return results;
-    } finally {
-      client.close();
-    }
-  };
-
-  opDB.createTask = async (taskObject) => {
-    let client;
-    try {
-      console.log("Creating task...");
-      client = new MongoClient(url, { useUnifiedTopology: true });
-      await client.connect();
-      console.log("Connecting to OpTask DB...");
       const db = client.db(DB_NAME);
       const tasksCollection = db.collection("tasks");
-      const result = await tasksCollection.insertOne(taskObject);
-      console.log("created task");
+
+      const result = await tasksCollection.insertOne(taskData);
+
       return result;
     } finally {
       client.close();
     }
   };
 
-  opDB.getTasks = async (projectId) => {
+  // Get tasks for a project
+  opDB.getTasks = async function(projectId) {
     let client;
     try {
-      console.log("Getting tasks...");
       client = new MongoClient(url, { useUnifiedTopology: true });
       await client.connect();
-      console.log("Connecting to OpTask DB...");
       const db = client.db(DB_NAME);
       const tasksCollection = db.collection("tasks");
-      const results = await tasksCollection
-        .find({ projectId: projectId })
-        .toArray();
-      console.log("got tasks");
-      return results;
+
+      const tasks = await tasksCollection.find({ projectId: new ObjectId(projectId) }).toArray();
+
+      return tasks;
     } finally {
       client.close();
     }
   };
 
-  opDB.updateTaskTimelineState = async (newTimelineData) => {
+  // Update task timeline state
+  opDB.updateTaskTimelineState = async function(taskTimelineObject) {
     let client;
     try {
-      console.log("Updating task timeline...");
       client = new MongoClient(url, { useUnifiedTopology: true });
       await client.connect();
-      console.log("Connecting to OpTask DB...");
       const db = client.db(DB_NAME);
       const tasksCollection = db.collection("tasks");
+
       const result = await tasksCollection.updateOne(
-        { _id: new ObjectId(newTimelineData.id) },
-        {
-          $set: {
-            taskState: newTimelineData.newState,
-          },
-        }
+        { _id: new ObjectId(taskTimelineObject.taskId) },
+        { $set: { timelineState: taskTimelineObject.newState } }
       );
-      console.log("completed update");
+
       return result;
     } finally {
       client.close();
     }
   };
 
-  opDB.updateTaskText = async (newTaskObject) => {
+  // Update task text
+  opDB.updateTaskText = async function(taskUpdateObject) {
     let client;
     try {
       client = new MongoClient(url, { useUnifiedTopology: true });
       await client.connect();
       const db = client.db(DB_NAME);
-      const taskCollection = db.collection("tasks");
-      const result = await taskCollection.findOneAndUpdate(
-        {
-          _id: new ObjectId(newTaskObject.id),
-        },
-        {
-          $set: {
-            taskText: newTaskObject.newText,
-          },
-        }
+      const tasksCollection = db.collection("tasks");
+
+      const result = await tasksCollection.updateOne(
+        { _id: new ObjectId(taskUpdateObject.taskId) },
+        { $set: { text: taskUpdateObject.newText } }
       );
-      console.log("updated task");
+
       return result;
     } finally {
       client.close();
     }
   };
 
-  opDB.deleteTask = async (taskId) => {
+  // Delete a task
+  opDB.deleteTask = async function(taskId) {
     let client;
     try {
       client = new MongoClient(url, { useUnifiedTopology: true });
       await client.connect();
       const db = client.db(DB_NAME);
-      const taskCollection = db.collection("tasks");
-      const result = await taskCollection.findOneAndDelete({
-        _id: new ObjectId(taskId),
-      });
-      console.log("deleted task");
+      const tasksCollection = db.collection("tasks");
+
+      const result = await tasksCollection.deleteOne({ _id: new ObjectId(taskId) });
+
       return result;
     } finally {
       client.close();
     }
   };
 
-  // // this function gets a user profile
-  // opDB.getProfile = async(userId) => {
-  //   let client;
-  //   console.log("Getting user info...");
-  //   client = new MongoClient(url, { useUnifiedTopology: true });
-  //   await client.connect();
-  //   console.log("Connecting to OpTask DB...");
-  //   const db = client.db(DB_NAME);
-  //   const usersCollection = db.collection("users");
-  //   const results = await usersCollection.findOne(
-  //     {_id: new ObjectId(userId) },
-  //   );
-  //   return results;
-  // };
-
-  // this function updates a user profile
-  opDB.updateUserData = async (userId, profileObj) => {
+  // Update project
+  opDB.updateProject = async function(projectId, newName, newDescription) {
     let client;
     try {
-      console.log("Getting user info...");
       client = new MongoClient(url, { useUnifiedTopology: true });
       await client.connect();
-      console.log("Connecting to OpTask DB...");
       const db = client.db(DB_NAME);
-      const usersCollection = db.collection("users");
-      const results = await usersCollection.updateOne(
-        { _id: new ObjectId(userId) },
-        {
-          $set: {
-            fullname: profileObj.userFullName,
-            username: profileObj.userEmail,
-            location: profileObj.userLocation,
-            institution: profileObj.userInstitution,
-            job: profileObj.userJob,
-          },
-        }
+      const projectsCollection = db.collection("projects");
+
+      const result = await projectsCollection.updateOne(
+        { _id: new ObjectId(projectId) },
+        { $set: { name: newName, description: newDescription } }
       );
-      console.log("completed update");
-      return results;
+
+      return result;
     } finally {
       client.close();
     }
   };
+
+  // Delete a project
+  opDB.deleteProject = async function(projectId) {
+    let client;
+    try {
+      client = new MongoClient(url, { useUnifiedTopology: true });
+      await client.connect();
+      const db = client.db(DB_NAME);
+      const projectsCollection = db.collection("projects");
+
+      const result = await projectsCollection.deleteOne({ _id: new ObjectId(projectId) });
+
+      return result;
+    } finally {
+      client.close();
+    }
+  };
+
   return opDB;
 }
 
